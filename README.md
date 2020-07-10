@@ -1,6 +1,5 @@
 # Points-cli
-POINTS-CLI
-----------
+
 Use this program to display random points and measure angles and distances
 between them.
 

@@ -9,7 +9,7 @@ Description:
 
 Points-cli is a small program that takes a given number of randomly generated 
 points in 3-Dimensions and plots them in multiple colors using matplotlib. It
-then allows the user to obtain various measurements from distances and agles
+then allows the user to obtain various measurements from distances and angles
 of the points to the van de Waals potential between centers of noble gases'
 molecules emulated by the random points. 
 

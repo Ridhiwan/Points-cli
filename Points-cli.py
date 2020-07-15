@@ -35,36 +35,33 @@ class Calc:
             Stores all those distances in a dictionary 'distances' with their unique ids. """
         args = self.points_check()
         ind = {f"{k}":v for v,k in enumerate(args)}
+        tot = math.factorial(len(args))/(math.factorial(2)*math.factorial(len(args)-2))
         distances = {}
-        for i,j in tqdm(itertools.product(args,args),total=len(args)**2):
+        for i,j in tqdm(itertools.combinations(args,r=2), total=int(tot)):
             k = i == j
             if k.all() == False:
                 dist = np.sqrt((i[0]-j[0])**2 + (i[1]-j[1])**2 + (i[2]-j[2])**2)
                 k,m = ind[f"{i}"], ind[f"{j}"]
-                upd = {f"{k}-{m}":round(dist,4)}
-                distances.update(upd)
+                upd1,upd2 = {f"{k}-{m}":round(dist,4)}, {f"{m}-{k}":round(dist,4)}
+                distances.update(upd1)
+                distances.update(upd2)
         return distances
 
     def points_angles(self):
-        """This method takes the correct points provided by points_check and calculates the angles for all possible orientations
-           among any three points. 
-           Creates unique identities for each entry and stores them in a dictionary 'ind'.
+        """This method takes the correct points provided by points_check and creates 
+           unique identities for each entry and stores them in a dictionary 'ind'.
            Stores all those angles in a dictionary angles with their unique ids."""
         args = self.points_check()
         ind = {f"{k}":v for v,k in enumerate(args)}
+        tot = math.factorial(len(args))/(math.factorial(len(args)-3))
         angles = {}
-        for i,j,k in tqdm(itertools.product(args,args,args),total=len(args)**3):
-            x,y,z = i==j, i==k, j==k
-            cond = x.all() or y.all() or z.all()
-            if cond == False:
-                f,e = i-j, j-k
-                ijVec,jkVec = np.linalg.norm(f), np.linalg.norm(e)
-                ijNorm,jkNorm = f / ijVec, e / jkVec
-                res = np.dot(ijNorm,jkNorm)
-                ang = 180 - np.degrees(np.arccos(res))
-                m,n,p = ind[f"{i}"], ind[f"{j}"], ind[f"{k}"]
-                upd = {f"{m}-{n}-{p}":round(ang,2)}
-                angles.update(upd)
+        for i,j,k in tqdm(itertools.permutations(args,r=3),total=int(tot)):
+            m,n,p = ind[f"{i}"], ind[f"{j}"], ind[f"{k}"]
+            test_k1,test_k2 = f"{m}-{n}-{p}", f"{p}-{n}-{m}"
+            if test_k1 and test_k2 not in angles.keys():
+                upd1,upd2 = {test_k1:0}, {test_k2:0}
+                angles.update(upd1)
+                angles.update(upd2)
         return angles
 
 class fill_box:
@@ -132,6 +129,11 @@ class CLI:
         ind = [int(i) for i in index]
         return ind
     
+    def format_fl(self,fl):
+        """This method formats the floats given from the command line interface"""
+        fl = [float(i) for i in fl]
+        return fl
+
     def format_input(self,arg):
         """This method takes input from req() and formats it into either a list or int or float."""
         if len(arg) == 2:
@@ -201,7 +203,7 @@ class CLI:
         time.sleep(0.350)
         print("\n\nBefore we output your box, you have an option to view all or some of the points.")
         time.sleep(0.300)
-        print("\n\tTo skip and continue leave black and press Enter.")
+        print("\n\tTo skip and continue leave blank and press Enter.")
         print("\t\t\t\tOR")
         print("\tProvide a slice in the format start:stop:step i.e 1:10:2\n")
         time.sleep(0.300)
@@ -215,51 +217,176 @@ class CLI:
                 return []
         return inner()
     
-    def get_distance(self,distances,angles):
+    def get_distance(self,points,distances,angles):
         """This method gets the distances of the given points."""
         print("\nTo measure the distance between two points, input the two points as follows a-b i.e 1-2.")
         print("\tTo go back to the menu type 3.\n")
         ans = input(">> ")
-        if ans == '3': self.menu(distances,angles)
+        if ans == '3': self.menu(points,distances,angles)
         else:
             try: distances[ans]
             except KeyError:
-                print("\nError: Incorrect input or no-existent point!",flush=True)
+                print("\nError: Incorrect input or non-existent point!",flush=True)
                 time.sleep(0.500)
-                self.get_distance(distances,angles)
+                self.get_distance(points,distances,angles)
             else:
                 print(f"\n---------- DISTANCE={distances[ans]} ----------")
                 time.sleep(0.500)
-                self.get_distance(distances,angles)
+                self.get_distance(points,distances,angles)
     
-    def get_angle(self,distances,angles):
+    def get_angle(self,points,distances,angles):
         """This method gets the angles of the given points."""
         print("\nTo measure the angle, input the three points as follows a-b-c i.e 1-2-3.")
         print("\tTo go back to the menu type 3.\n")
         ans = input(">> ")
-        if ans == '3': self.menu(distances,angles)
+        if ans == '3': self.menu(points,distances,angles)
         else:
             try: angles[ans]
             except KeyError:
                 print("\nError: Incorrect input or non-existent point!")
                 time.sleep(0.500)
-                self.get_angle(distances,angles)
+                self.get_angle(points,distances,angles)
             else:
-                print(f"\n---------- ANGLE={angles[ans]} ----------")
+                key = ans.split('-')
+                key = self.format_ind(key)
+                ind = {k:v for k,v in enumerate(points)}
+                i,j,k = ind[key[0]], ind[key[1]], ind[key[2]]
+                f,e = i-j, j-k
+                ijVec,jkVec = np.linalg.norm(f), np.linalg.norm(e)
+                ijNorm,jkNorm = f / ijVec, e / jkVec
+                res = np.dot(ijNorm,jkNorm)
+                ang = 180 - np.degrees(np.arccos(res))
+                ang = round(ang,2)
+                print(f"\n---------- ANGLE={ang} ----------")
                 time.sleep(0.500)
-                self.get_angle(distances,angles)
+                self.get_angle(points,distances,angles)
     
-    def menu(self,distances,angles):
+    def interface_LJ(self):
+        """This method is the mini interface fo noble gases in the L-J section."""
+        print("\nChoose the noble gas that the points will emulate.")
+        print("\tHe","Ne","Arg","Kr","Xe","Ra", "i.e Ne", end=' ')
+        print(" \n")
+        ans = input(">> ")
+        noble = {"He":(2.628,5.465),"Ne":(2.775,36.831),"Arg":(3.401,116.81),"Kr":(3.601,164.56),"Xe":(4.055,218.18),"Ra":(4.36,283)}
+        ans = ans.capitalize()
+        try: noble[ans]
+        except KeyError:
+            print("\nError: Incorrect input or undefined noble gas!",flush=True)
+            self.interface_LJ()
+        else:
+           print(f"""\nWould you like to specify L-J parameters? \n\n\tIf yes Provide the parameters in the format \u03C3,\u03B5/\u03BAb.
+           The default parameters are {noble[ans]} for {ans} \n\tIf no leave blank and press Enter to continue.\n""")
+           pref = input(">> ")
+           if len(list(pref)) != 0:
+               params = pref.split(',')
+               params = self.format_fl(params)
+           try: params
+           except NameError:
+               params = noble[ans]
+               return params
+           else:
+            return params
+     
+    def interface_Morse(self):
+        """This method is the mini interface fo noble gases in the Morse section."""
+        print("\nChoose the noble gas that the points will emulate.")
+        print("\tHe","Ne","Arg","Kr","Xe","i.e Ne", end=' ')
+        print(" \n")
+        ans = input(">> ")
+        noble = {"He":(12.6,2.92,2.197),"Ne":(51.3,3.09,2.036),"Arg":(118.1,4.13,1.253),"Kr":(149.0,4.49,1.105),"Xe":(226.9,4.73,1.099)}
+        ans = ans.capitalize()
+        try: noble[ans]
+        except KeyError:
+            print("\nError: Incorrect input or undefined noble gas!",flush=True)
+            self.interface_Morse()
+        else:
+           print(f"""\nWould you like to specify Morse parameters? \n\n\tIf yes Provide the parameters in the format De/\u03BAb,re,\u03B1.
+           The default parameters are {noble[ans]} for {ans} \n\tIf no leave blank and press Enter to continue.\n""")
+           pref = input(">> ")
+           if len(list(pref)) != 0:
+               params = pref.split(',')
+               params = self.format_fl(params)
+           try: params
+           except NameError:
+               params = noble[ans]
+               return params
+           else:
+            return params
+
+    def get_LJ(self,points,distances,angles,params):
+        """This method gets the vdW Lennard-Jones potential of the given points."""
+        params = params
+        print("\nTo measure the vdW potential, input the two centers as follows a-b i.e 1-2.")
+        print("\tTo choose a different noble gas type 2.")
+        print("\tTo go back to the menu type 3.\n")
+        ans = input(">> ")
+        if ans == '2': self.intrm1(points,distances,angles)
+        elif ans == '3': self.menu(points,distances,angles)
+        else:
+            try: distances[ans]
+            except KeyError:
+                print("\nError: Incorrect input or non-existent point!",flush=True)
+                time.sleep(0.500)
+                self.get_LJ(points,distances,angles,params)
+            else:
+                r = distances[ans]
+                print(f"\n--dist={r} angstrom--")
+                b,e = params
+                v=(4*e*(1.3807*10**-23)*((b/r)**12-(b/r)**6))*(6.02214076*10**23)
+                v = round(v,4)
+                print(f"\n---------- vdW= {v}J/mol ----------")
+                time.sleep(0.500)
+                self.get_LJ(points,distances,angles,params)
+    
+    def get_Morse(self,points,distances,angles,params):
+        """This method gets the vdW Lennard-Jones potential of the given points."""
+        params = params
+        print("\nTo measure the vdW potential, input the two centers as follows a-b i.e 1-2.")
+        print("\tTo choose a different noble gas type 2.")
+        print("\tTo go back to the menu type 3.\n")
+        ans = input(">> ")
+        if ans == '2': self.intrm2(points,distances,angles)
+        elif ans == '3': self.menu(points,distances,angles)
+        else:
+            try: distances[ans]
+            except KeyError:
+                print("\nError: Incorrect input or non-existent point!",flush=True)
+                time.sleep(0.500)
+                self.get_Morse(points,distances,angles,params)
+            else:
+                r = distances[ans]
+                print(f"\n--dist={r} angstrom--")
+                De,re,a = params
+                A,B = -2*a*(r-re), -a*(r-re)
+                v=De*(1.3807*10**-23)*(math.exp(A)-2*math.exp(B))*(6.02214076*10**23)
+                v = round(v,4)
+                print(f"\n---------- vdW= {v}J/mol ----------")
+                time.sleep(0.500)
+                self.get_Morse(points,distances,angles,params)
+
+    def intrm1(self,points,distances,angles):
+        params = self.interface_LJ()
+        self.get_LJ(points,distances,angles,params)
+
+    def intrm2(self,points,distances,angles):
+        params = self.interface_Morse()
+        self.get_Morse(points,distances,angles,params)
+
+    def menu(self,points,distances,angles):
         """This method controls menu options."""
         print("\nType the 'number' to choose from the menu.")
         print("\n\t 1. Measure Distance")
         print("\t 2. Measure Angle")
-        print("\t 3. Exit Points")
+        print("\t 3. vdW Lennard-Jones")
+        print("\t 4. vdW Morse")
+        print("\t 5. Exit Points")
         ans = input("$~ ")
-        if ans == '1': self.get_distance(distances,angles)
-        elif ans == '2': self.get_angle(distances,angles)
-        elif ans == '3': sys.exit()
-        else: self.menu(distances,angles)
+        if ans == '1': self.get_distance(points,distances,angles)
+        elif ans == '2': self.get_angle(points,distances,angles)
+        elif ans == '3': self.intrm1(points,distances,angles)
+        elif ans == '4': self.intrm2(points,distances,angles)
+        elif ans == '5': sys.exit()
+        else: self.menu(points,distances,angles)
    
     def interface3(self,points,distances,angles):
         """ This method intergrates the interaction between the plot and the user.
@@ -306,10 +433,8 @@ class CLI:
         fig.canvas.mpl_connect("motion_notify_event", hover)
         fig.canvas.set_window_title("Points-cli")
         plt.show(block=False)
-        self.menu(distances,angles)
+        self.menu(points,distances,angles)
         plt.show()
-
-
 
 def main():
     block = CLI()
@@ -329,9 +454,10 @@ def main():
         calc = Calc(*points)
         print("\nCalculating distances......")
         distances = calc.points_distances() 
-        print("\nCalculating angles......")
+        print("\nGenerating angles......")
         angles = calc.points_angles()
         block3 = block.interface3(points,distances,angles)
         
 
 if __name__ == '__main__': main()
+
